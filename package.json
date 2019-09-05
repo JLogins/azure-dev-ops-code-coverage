@@ -1,0 +1,11 @@
+{
+  "name": "code-coverage-plug-in",
+  "version": "0.0.1",
+  "description": "Plug in to show code coverage from build coverage file",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Germans Gruseckis",
+  "license": "ISC"
+}
