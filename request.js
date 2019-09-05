@@ -66,7 +66,7 @@ getCommitedFileDomElements = () => {
 };
 
 // Todo work in progress
-getBuildId=(pullRequestNr) => 
+getBuildId = (pullRequestNr) => 
 new Promise((resolve, reject) => {
   $.ajax({
     url: `${apiBaseURL}/build/builds?resultFilter=succeeded&reasonFilter=pullRequest&queryOrder=finishTimeDescending&$top=1&branchName=refs/pull/${pullRequestNr}/merge&api-version=5.1`
@@ -134,11 +134,11 @@ main = async () => {
     const pullRequestNumber = getPullRequestNumber();
     // Switch to files tab
     await openCorrectTab('files');
-    const buildId = await getBuildId(pullRequestNumber);// url.searchParams.get('buildId');
+    const buildId = await getBuildId(pullRequestNumber);
     const getArtifactsUri = `${apiBaseURL}/build/builds/${buildId}/artifacts?api-version=5.1`;
 
     containerId = await getContainerId(getArtifactsUri);
-    // Note part after ?itemPath= need to be part to artifact with code coverage report 
+    // Note part after ?itemPath= need to be part to artifact with code coverage report
     const requestUri = `https://dev.azure.com/${organization}/_apis/resources/Containers/${containerId}?itemPath=Code%20Coverage%20Report_${buildId}%2Fsummary${buildId}%2F${codeCoverageCodeName}`;
 
     // Get coverage xml report
