@@ -4,6 +4,8 @@ const organization;
 const project;
 const codeCoverageCodeName;
 
+const apiBaseURL = `https://dev.azure.com/${organization}/${project}/_apis`
+
 getContainerId = getArtifactsUri =>
   new Promise((resolve, reject) => {
     $.ajax({
@@ -63,6 +65,19 @@ getCommitedFileDomElements = () => {
   return filteredFiles;
 };
 
+// Todo work in progress
+getBuildId=(pullRequestNr) => 
+new Promise((resolve, reject) => {
+  $.ajax({
+    url: `${apiBaseURL}/build/builds?resultFilter=succeeded&reasonFilter=pullRequest&queryOrder=finishTimeDescending&$top=1&branchName=refs/pull/${pullRequestNr}/merge&api-version=5.1`
+  }).done(data => {
+    if(data && data.value && data.value.length > 0){
+      return resolve(data.value[0].id);
+    }
+    return reject(new Error('Can\'t find valid build!'))
+  })
+})
+
 openCorrectTab = tabName => 
   new Promise((resolve, reject) => {
     if($(`[data-id="${tabName}"]`).hasClass('selected')){
@@ -80,7 +95,7 @@ openCorrectTab = tabName =>
   })
 ;
 
-onCorrectPageCheck = () => {
+getPullRequestNumber = () => {
   const uri = new URL(document.baseURI);
   const uriPathNames = uri.pathname.split('/');
   if (uriPathNames[uriPathNames.length - 2] !== 'pullrequest') {
@@ -88,6 +103,7 @@ onCorrectPageCheck = () => {
       `You need to be in ${branchName} pull request in order to run this script`
     );
   }
+  return uriPathNames[uriPathNames.length - 1]
 };
 
 showCodeCoverageOnFile = (files, codeCoverage) => {
@@ -106,7 +122,7 @@ showCodeCoverageOnFile = (files, codeCoverage) => {
         textColor = 'green';
       }
       coverageInfo.style.cssText = `font-weight: 500;color: ${textColor};`
-      coverageInfo.innerText = ` B: ${fileCodeCoverage.lineCoverage}% L: ${fileCodeCoverage.branchCoverage}%`
+      coverageInfo.innerText = ` L: ${fileCodeCoverage.lineCoverage}% B: ${fileCodeCoverage.branchCoverage}%`
       file.appendChild(coverageInfo);
     }
   })
@@ -115,35 +131,30 @@ showCodeCoverageOnFile = (files, codeCoverage) => {
 main = async () => {
   try {
     // Check if on correct page and can run script;
-    onCorrectPageCheck();
-
-    // Switch tabs to get build Id
-    await openCorrectTab('overview');
-    const link = $('.vc-pullrequest-leftpane-section .actionLink');
-
-    if (link.length === 0 || link[0].innerText !== 'Build succeeded') {
-      throw new Error("Can't find valid build.");
-    }
-    const url = new URL(link[0].href);
-    // Switch tabs to get to files
+    const pullRequestNumber = getPullRequestNumber();
+    // Switch to files tab
     await openCorrectTab('files');
-    const buildId = url.searchParams.get('buildId');
-    const getArtifacsUri = `https://dev.azure.com/${organization}/${project}/_apis/build/builds/${buildId}/artifacts?api-version=5.1`;
+    const buildId = await getBuildId(pullRequestNumber);// url.searchParams.get('buildId');
+    const getArtifactsUri = `${apiBaseURL}/build/builds/${buildId}/artifacts?api-version=5.1`;
 
-    containerId = await getContainerId(getArtifacsUri);
-    // note part after ?itemPath= need to be part to artifact with code coverage report 
+    containerId = await getContainerId(getArtifactsUri);
+    // Note part after ?itemPath= need to be part to artifact with code coverage report 
     const requestUri = `https://dev.azure.com/${organization}/_apis/resources/Containers/${containerId}?itemPath=Code%20Coverage%20Report_${buildId}%2Fsummary${buildId}%2F${codeCoverageCodeName}`;
 
+    // Get coverage xml report
     const coverageReportXML = await getCoverageXML(requestUri);
 
+    // Parse and map report to object
     const mappedCoverage = getTestCoverageFromXML(coverageReportXML);
 
+    // Get Files from page
     let filteredFiles = getCommitedFileDomElements();
     if (filteredFiles.length === 0) {
       throw new Error("Can't find files to show code coverage with");
     }
-    showCodeCoverageOnFile(filteredFiles, mappedCoverage);
 
+    // Display code coverage
+    showCodeCoverageOnFile(filteredFiles, mappedCoverage);
   } catch (error) {
     console.error(error);
   }
