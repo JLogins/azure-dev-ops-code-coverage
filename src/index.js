@@ -1,3 +1,3 @@
-import { main } from './spa/request';
+import { main } from './main';
 
 main();
