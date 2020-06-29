@@ -3,36 +3,83 @@ const warningLineCoverage = 90;
 const criticalBranchCoverage = 80;
 const warningBranchCoverage = 90;
 
-const addTag = (link, icon) =>{
-    var tag = document.createElement('a');
-    tag.setAttribute('href', link);
-    tag.setAttribute('target', '_blank');
-    tag.innerText = icon;
-    return tag;
-  };
+const createTag = (link, icon) => {
+  var tag = document.createElement("a");
+  tag.setAttribute("href", link);
+  tag.setAttribute("target", "_blank");
+  tag.innerText = icon;
+  return tag;
+};
+
+// FileCodeCoverage
+// {
+//   branchCoverage: Number
+//   fileName: String
+//   lineCoverage: Number
+//   link: URL
+// }
 
 export const showCodeCoverageOnFile = (files, codeCoverage) => {
-    files.forEach(file => {
-      const fileCodeCoverage = codeCoverage.find(coverage => {
-        return file.attributes["content"].value.includes(coverage.fileName);
-      });
+  console.log("Painting coverage on page");
+  console.log(codeCoverage);
 
-      if(fileCodeCoverage){
-        const coverageInfo = document.createElement('span');
-        let textColor;
-        if(fileCodeCoverage.lineCoverage < criticalLineCoverage || fileCodeCoverage.branchCoverage < criticalBranchCoverage) {
-          textColor = 'red';
-        } else if (fileCodeCoverage.lineCoverage < warningLineCoverage || fileCodeCoverage.branchCoverage < warningBranchCoverage) {
-          textColor = 'orange';
-        } else {
-          textColor = 'green';
-        }
-        coverageInfo.style.cssText = `font-weight: 500;color: ${textColor};`
-        coverageInfo.innerText = ` L: ${fileCodeCoverage.lineCoverage}% B: ${fileCodeCoverage.branchCoverage || 0 }%`
-        file.appendChild(coverageInfo);
-        if(fileCodeCoverage.link) {
-            file.appendChild(addTag(fileCodeCoverage.link, " 👁️"));
-        }
+  //Match files on page with code coverage extracted
+  files.forEach((file) => {
+    const fileCodeCoverage = codeCoverage.find((coverage) => {
+      let splitCovFile = coverage.fileName.split(".");
+      console.log(
+        file
+          .getElementsByClassName("text-ellipsis")[0]
+          .firstChild.innerText.split(".")[0]
+      );
+      return file
+        .getElementsByClassName("text-ellipsis")[0]
+        .firstChild.innerText.split(".")[0]
+        .includes(splitCovFile[splitCovFile.lenght - 1]); //file.attributes["content"].value.includes(coverage.fileName);
+    });
+
+    if (fileCodeCoverage) {
+      const coverageInfo = getCoverageTag(fileCodeCoverage);
+      file.appendChild(coverageInfo);
+      if (fileCodeCoverage.link) {
+        appendLinkTag();
       }
-    })
-  };
+    }
+  });
+};
+
+//Where linecoverage, branchcoverage are Number
+const getTextColor = (lineCoverage, branchCoverage) => {
+  let textColor;
+  if (
+    lineCoverage < criticalLineCoverage ||
+    branchCoverage < criticalBranchCoverage
+  ) {
+    textColor = "red";
+  } else if (
+    lineCoverage < warningLineCoverage ||
+    branchCoverage < warningBranchCoverage
+  ) {
+    textColor = "orange";
+  } else {
+    textColor = "green";
+  }
+  return textColor;
+};
+
+//Where element is HTMLElement
+const appendLinkTag = (element) => {
+  element.appendChild(createTag(fileCodeCoverage.link, " 👁️"));
+};
+
+function getCoverageTag(fileCodeCoverage) {
+  const coverageInfo = document.createElement("span");
+  coverageInfo.style.cssText = `font-weight: 500;color: ${getTextColor(
+    fileCodeCoverage.lineCoverage,
+    fileCodeCoverage.branchCoverage
+  )};`;
+  coverageInfo.innerText = ` L: ${fileCodeCoverage.lineCoverage}% B: ${
+    fileCodeCoverage.branchCoverage || 0
+  }%`;
+  return coverageInfo;
+}

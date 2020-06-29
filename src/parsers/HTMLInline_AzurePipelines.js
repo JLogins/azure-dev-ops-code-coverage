@@ -18,6 +18,7 @@ const parseRow = (row, baseURI) => {
 };
 
 export const getTestCoverageFromHTML = (coverageReport, baseURI) => {
+    console.log("Parsing HTML coverage report");
     let parser = new DOMParser();
     const coverageReportHTML = parser.parseFromString(coverageReport, 'text/html');
     const tablerows = coverageReportHTML.getElementsByClassName("overview table-fixed stripped")[0].rows;

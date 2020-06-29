@@ -2,6 +2,8 @@ export const getTestCoverageFromXML = coverageReport => {
     const coverageReportXML = $.parseXML(coverageReport);
     const classes = coverageReportXML.getElementsByTagName('class');
     
+    console.log("Parsing Coverage XML");
+
     let mappedCoverage = [];
     for (let i = 0; i < classes.length; i++) {
         let obj = {

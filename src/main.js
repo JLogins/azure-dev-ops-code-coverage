@@ -1,25 +1,11 @@
 import { organization, codeCoverageXmlReportName, useHtmlReport, apiBaseURL} from '../config';
 import { showCodeCoverageOnFile } from './presentation/show-coverage';
-import { getBuildId, getContainerId, getCoverage} from './api/requests';
+import { getBuildId, getContainerId, getCoverage, getBuildIdXHR, getCoverageXHR, getContainerIdXHR} from './api/requests';
 import { getTestCoverageFromHTML } from './parsers/HTMLInline_AzurePipelines';
 import { getTestCoverageFromXML } from './parsers/Cobertura';
 import { getCommitedFileDomElements } from './parsers/Azure_Devops_Pull_Request_DOM';
-
-const openCorrectTab = tabName => 
-  new Promise((resolve, reject) => {
-    if($(`[data-id="${tabName}"]`).hasClass('selected')){
-      resolve();
-    }
-    const fileTab = $(`[data-id="${tabName}"] a`);
-    if (fileTab[0]) {
-      fileTab[0].click();
-      setTimeout(() => 
-        resolve()
-      ,500);
-    } else {
-      reject(new Error(`Can't find ${tabName} tab.`));
-    }
-  });
+import { openFilesTab } from './utils';
+import { getCommitedFileDomElementsPreview } from './parsers/Azure_Devops_Pull_Request_DOM_PREVIEW';
 
 const getPullRequestNumber = () => {
   const uri = new URL(document.baseURI);
@@ -37,12 +23,14 @@ export const main = async () => {
     // Check if on correct page and can run script;
     const pullRequestNumber = getPullRequestNumber();
     // Switch to files tab
-    await openCorrectTab('files');
+    
+    //await openCorrectTab('files');
+    await openFilesTab(true);
 
-    const buildId = await getBuildId(pullRequestNumber);
+    const buildId = await getBuildIdXHR(pullRequestNumber);//await getBuildId(pullRequestNumber);
     const getArtifactsUri = `${apiBaseURL}/build/builds/${buildId}/artifacts?api-version=5.1`;
 
-    const containerId = await getContainerId(getArtifactsUri);
+    const containerId = await getContainerIdXHR(getArtifactsUri);
     // Note part after ?itemPath= is a path to artifact with code coverage report
    
     var mappedCoverage;
@@ -50,20 +38,20 @@ export const main = async () => {
       const testReportsUri = `${apiBaseURL}/test/CodeCoverage/browse/${containerId}/Code%20Coverage%20Report_${buildId}/`;
       
       const htmlSummaryPath = testReportsUri + `/index.htm`;
-      const coverageReport = await getCoverage(htmlSummaryPath);
+      const coverageReport = await getCoverageXHR(htmlSummaryPath);
       mappedCoverage = getTestCoverageFromHTML(coverageReport, testReportsUri);
     }
     else {
       const requestUri = `https://dev.azure.com/${organization}/_apis/resources/Containers/${containerId}?itemPath=Code%20Coverage%20Report_${buildId}/summary${buildId}/${codeCoverageXmlReportName}`;
 
       // Get coverage xml report
-      const coverageReportXML = await getCoverage(requestUri);
+      const coverageReportXML = await getCoverageXHR(requestUri);
 
       // Parse and map report to object
       mappedCoverage = getTestCoverageFromXML(coverageReportXML);
     }
     // Get Files from page
-    let filteredFiles = getCommitedFileDomElements();
+    let filteredFiles = getCommitedFileDomElementsPreview();//getCommitedFileDomElements()
     if (filteredFiles.length === 0) {
       throw new Error("Can't find files to show code coverage with");
     }
